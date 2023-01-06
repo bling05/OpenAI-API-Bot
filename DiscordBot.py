@@ -3,7 +3,7 @@ import openai
 import random
 import asyncio
 
-TOKEN = 'OTUzNzA0NzMxNDk3MzY1NjA2.GwrLT2.tSpsbE6ir819Ud6JYTU-A_x5z8CM4or9c8VsEs'
+TOKEN = ''
 CHATGPT_TOKEN = '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'
 openai.api_key = CHATGPT_TOKEN
 
@@ -38,7 +38,7 @@ async def on_message(message):
     print(f"{message.author}: {message.content}")
     if message.author == client.user:
         return
-    if len(message.content) >= 8 and message.content[:9].lower() == 'hey bitch':
+    if len(message.content) >= 8 and message.content[:9].lower() == 'hey':
         # send the response
         await message.channel.send(response(message, True))
         return
