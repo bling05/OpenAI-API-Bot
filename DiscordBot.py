@@ -11,10 +11,9 @@ sample_rates = [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000]
 text_engine = "text-davinci-003"
 image_engine = "image-alpha-001"
 
-TOKEN = 'OTUzNzA0NzMxNDk3MzY1NjA2.GXPWnh.dH3JzBoCqB7cWEcnooFnJ4-GxDbjojqiHnkBgI'
-CHATGPT_TOKEN = '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'
-TENOR_TOKEN = 'AIzaSyCYWIpNV0IpZ9Sx9jkf0J29qoKtCRNWJkg'
-DEEP_ART_TOKEN = '9b3hH3QBvsaqmXLUy1TgF1jqbgTSRCHk3sjgfJQG'
+TOKEN = ''
+CHATGPT_TOKEN = ''
+DEEP_ART_TOKEN = ''
 
 LANG = 'en'
 TLD = 'com'
