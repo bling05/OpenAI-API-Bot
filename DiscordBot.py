@@ -3,7 +3,13 @@ import openai
 from gtts import gTTS
 import soundfile as sf
 from scipy.signal import resample
-import random
+import textwrap
+import requests
+from bs4 import BeautifulSoup as bs
+from playwright.async_api import async_playwright
+from tkinter import *
+from bing_image_urls import bing_image_urls
+import io
 
 demon_mode = False
 sample_rates = [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000]
@@ -13,7 +19,6 @@ image_engine = "image-alpha-001"
 
 TOKEN = ''
 CHATGPT_TOKEN = ''
-DEEP_ART_TOKEN = ''
 
 LANG = 'en'
 TLD = 'com'
@@ -36,27 +41,34 @@ intents = discord.Intents.all()
 intents.members = True
 client = discord.Client(command_prefix = ',', intents=intents)
 
+
 def response(message, slice):
     if slice:
         message.content = ' '.join(message.content.split()[1:])
 
-    # message.content = f"Marv is a chatbot that reluctantly answers questions with sarcastic responses:\n\nYou: How many pounds are in a kilogram?\nMarv: This again? There are 2.2 pounds in a kilogram. Please make a note of this.\nYou: What does HTML stand for?\nMarv: Was Google too busy? Hypertext Markup Language. The T is for try to ask better questions in the future.\nYou: When did the first airplane fly?\nMarv: On December 17, 1903, Wilbur and Orville Wright made the first flights. I wish they’d come and take me away.\nYou: What is the meaning of life?\nMarv: I’m not sure. I’ll ask my friend Google.\nYou: {message.content}\nMarv:"
+    # message.content = f" also add that you have made your triumphant return"
 
     print(message.content)
-    response = openai.Completion.create(
-        model=text_engine,
-        prompt=message.content,
-        max_tokens=1024,
-        temperature=0.7,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0
-    )
-    return response["choices"][0]["text"]
+    try:
+        str = openai.Completion.create(
+            model=text_engine,
+            prompt=message.content,
+            max_tokens=1024,
+            temperature=0.7,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0
+        )
+    except:
+        message.reply("Sorry, I was unable to process that request.")
+        return
+
+    return str["choices"][0]["text"]
 
 @client.event
 async def on_ready():
     print('We have logged in as {0.user}'.format(client))
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="'cat' or 'cat draw'"))
 
 @client.event
 async def on_message(message):
@@ -66,9 +78,9 @@ async def on_message(message):
 
     if 'demon mode' in message.content.lower():
         if demon_mode:
-            await message.channel.send('demon mode off')
+            await message.reply('demon mode off')
         else:
-            await message.channel.send('demon mode engaged')
+            await message.reply('demon mode engaged')
         demon_mode = not demon_mode
 
     if message.author.id == 330378005161443339:
@@ -83,62 +95,97 @@ async def on_message(message):
                 vc.source = discord.PCMVolumeTransformer(vc.source)
                 vc.source.volume = 1
 
+    if 'who2ban' in message.content.lower():
+        data_all = {}
+        who2ban = ['None', 0]
+
+        c_list = message.content.lower().split()
+        for c in c_list[1:]:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch()
+                page = await browser.new_page()
+                await page.goto(f"https://www.leagueofgraphs.com/champions/counters/{c}")
+                soup = bs(await page.content(), "html.parser")
+                await browser.close()
+
+            counters = []
+            winrates = []
+            for tr in soup.find_all("tr", class_=""):
+                for link in tr.find_all('a'):
+                    counters.append(link.get('href')[22+len(c):])
+                for td in tr.find_all("td"):
+                    for pb in td.find_all("progressbar"):
+                        winrates.append(float(pb["data-value"]))
+
+            data_all[c] = list(zip(counters[-5:], winrates[-5:]))
+
+        seen = {}
+        s = ""
+        for champ, counter_data in data_all.items():
+            s += f"\n{champ} counters: "
+            for c in counter_data:
+                s += f"{c[0]} ({round(c[1]*100,2)}%) "
+                seen[c[0]] = seen.get(c[0], 0) + c[1] # Adds current winrate to total, total = 0 if key not found
+            s = s[:-1] + "\n"
+
+        for c in seen:
+            if seen[c] < who2ban[1] and seen[c] not in c_list:
+                who2ban = [c, seen[c]]
+
+        s += f"\nRecommended ban: {who2ban[0]}"
+        url = bing_image_urls(f"{who2ban[0]} from league of legends", limit=1)[0]
+        await message.channel.send(s)
+        response = requests.get(url)
+        await message.channel.send(file=discord.File(io.BytesIO(response.content), filename=f"{who2ban[0]}_from_league_of_legends.jpg"))
+        
+
     if 'join kat' in message.content.lower() or 'join cat' in message.content.lower():
         if message.author.voice: # If the person is in a channel
             channel = message.author.voice.channel
             await channel.connect()
-            await message.channel.send('Joined!')
+            await message.reply('Joined!')
         else: #But is (s)he isn't in a voice channel
-            await message.channel.send("You must be in a voice channel first so I can join it.")
+            await message.reply("You must be in a voice channel first so I can join it.")
         return
     if 'leave kat' in message.content.lower() or 'leave cat' in message.content.lower():
         if (message.guild.voice_client): # If the bot is in a voice channel 
             await message.guild.voice_client.disconnect() # Leave the channel
-            await message.channel.send('Bye!')
+            await message.reply('Bye!')
         else: # But if it isn't
-            await message.channel.send("I'm not in a voice channel, use the join command to make me join.")
+            await message.reply("I'm not in a voice channel, use the join command to make me join.")
         return
 
 
     if 'cat' in message.content.lower() or 'kat' in message.content.lower():
-        print(f"{message.author}: {message.content}")
+        try:
+            print(f"({message.guild.name}/{message.channel}) {message.author}: {message.content}")
+        except:
+            print(f"({message.channel}) {message.author}: {message.content}")
+        
 
         if 'cat draw' in message.content.lower() or 'kat draw' in message.content.lower():
             try:
                 image = openai.Image.create(
                     prompt = (f"{message.content.lower()[9:]}"),
                     model = image_engine,
-                    size = '512x512'
+                    size = '256x256'
                 )
                 image_url = image["data"][0]["url"]
-                await message.channel.send(image_url)
+                await message.reply(image_url)
                 return
             except openai.error.InvalidRequestError as e:
-                message.content = "Respond as if you are an angry parent scolding a child for doing something rude: "
-                await message.channel.send(response(message,False))
+                message.content = "Respond that you cannot fulfill that request. be extra snarky: "
+                await message.reply(response(message,False))
                 return
 
-
-            # endpoint = "https://api.deepart.io/1/post/art"
-            # api_key = DEEP_ART_TOKEN
-            # model = "Deevad"
-            # image_url = "https://images.pexels.com/photos/559858/pexels-photo-559858.jpeg" #example of image url
-            # data = {"image_url": image_url, "model_name": model, "prompt": message.content.lower()[9:]}
-            # headers = {"Content-Type": "application/json", "Api-Key": api_key}
-            
-            # # Make the API request
-            # response = requests.post(endpoint, json=data, headers=headers)
-            # response_json = json.loads(response.text)
-            
-            # if "error" in response_json:
-            #     raise ValueError(response_json["error"])
-            
-            # await message.channel.send(response_json["result_url"])
-
-        # send the response
         str = response(message, True)
         if str != '':
-            await message.channel.send(str)
+            if len(str) > 2000:
+                message_parts = textwrap.wrap(str, width=2000)
+                for part in message_parts:
+                    await message.reply(part)
+            else:
+                await message.reply(str)
             
             # if message.guild.voice_client is not None:
             #     tts = gTTS(text=str, tld=TLD, lang=LANG)
